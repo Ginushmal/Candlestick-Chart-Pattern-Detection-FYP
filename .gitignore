@@ -1,2 +1,34 @@
+# Ignore byte-compiled Python files
+*.pyc
+*.pyo
+__pycache__/
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
 
+# Ignore virtual environment folders
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.Python
+
+# Ignore VS Code settings
+.vscode/
+.history/ 
+
+# Ignore MacOS files
+.DS_Store
+
+# Ignore Windows files
+Thumbs.db
+ehthumbs.db
+
+# Ignore log files
+*.log
+
+# Ignore data files
 *.csv
