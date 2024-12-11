@@ -19,6 +19,7 @@ venv.bak/
 # Ignore VS Code settings
 .vscode/
 .history/ 
+.test_models/
 
 # Ignore MacOS files
 .DS_Store
@@ -32,3 +33,7 @@ ehthumbs.db
 
 # Ignore data files
 *.csv
+*.pkl
+*.xlsx
+*.pkl
+*.pkl
