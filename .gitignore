@@ -20,6 +20,7 @@ venv.bak/
 .vscode/
 .history/ 
 .test_models/
+Experiments/
 
 # Ignore MacOS files
 .DS_Store
