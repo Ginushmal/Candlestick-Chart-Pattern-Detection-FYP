@@ -156,6 +156,9 @@ def dataset_format(filteredPatternDf):
         symbol_df = pd.read_csv(f'Datasets/OHLC data/{symbol}.csv')
         symbol_df['Date'] = pd.to_datetime(symbol_df['Date'])
         
+        # Remove timezone information from the Date column
+        symbol_df['Date'] = symbol_df['Date'].dt.tz_localize(None)
+        
         # Filter the symbol DataFrame to include only the date range with padding
         symbol_df_filtered = symbol_df[(symbol_df['Date'] >= padded_start_date) & 
                                     (symbol_df['Date'] <= padded_end_date)]

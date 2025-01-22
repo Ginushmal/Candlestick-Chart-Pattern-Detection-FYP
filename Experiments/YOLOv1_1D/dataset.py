@@ -25,9 +25,10 @@ class OHCLDataset(torch.utils.data.Dataset):
         
         # Extract rows using .loc
         label_row = self.label_df.loc[index].copy()
+        print("label_row : ", label_row)
         ohcl_row = self.ohcl_segments_df.loc[index].copy()
         
-        print("label_row : ", label_row)
+        
         print("ohcl_row : ", ohcl_row)
 
         # Convert the Pattern column to int in the label_row
