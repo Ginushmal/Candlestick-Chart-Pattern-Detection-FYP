@@ -69,6 +69,31 @@ def normalize_dataset(dataset):
     
     return dataset_normalized    
 
+def normalize_ohlc_segment(dataset):
+    # calculate the min values from Low column and max values from High column for each instance
+    min_low = dataset['Low'].transform('min')
+    max_high = dataset['High'].transform('max')
+    
+    # OHLC columns to normalize
+    ohlc_columns = ['Open', 'High', 'Low', 'Close']
+    
+    dataset_normalized = dataset.copy()
+    
+    # Apply the normalization formula to all columns in one go
+    dataset_normalized[ohlc_columns] = (dataset_normalized[ohlc_columns] - min_low.values[:, None]) / (max_high.values[:, None] - min_low.values[:, None])
+    
+    # if there is a Volume column normalize it
+    if 'Volume' in dataset.columns:
+        # calculate the min values from Volume column and max values from Volume column for each instance
+        min_volume = dataset['Volume'].transform('min')
+        max_volume = dataset['Volume'].transform('max')
+        
+        # Normalize the Volume column
+        dataset_normalized['Volume'] = (dataset_normalized['Volume'] - min_volume.values) / (max_volume.values - min_volume)
+    
+    
+    return dataset_normalized   
+
 def add_multi_indexes(data_section , Instance = 0):
      # Reset index to integers (from dates)
     data_section.reset_index(drop=True, inplace=True)

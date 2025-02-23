@@ -11,6 +11,26 @@ List is structured by tuples and lastly int with number of repeats
 # touple is structured by (kernel_size, (num of)out channels, stride, padding)
 
 # Define your architecture config for testing
+# architecture_config = [
+#     (3, 32, 1, 1),
+#     "M",
+#     (3, 192, 1, 1),
+#     "M",
+#     (1, 128, 1, 0),
+#     (3, 256, 1, 1),
+#     (1, 256, 1, 0),
+#     (3, 512, 1, 1),
+#     "M",
+#     [(1, 256, 1, 0), (3, 512, 1, 1), 4],
+#     (1, 512, 1, 0),
+#     (3, 1024, 1, 1),
+#     "M",
+#     [(1, 512, 1, 0), (3, 1024, 1, 1), 2],
+#     (3, 1024, 1, 1),
+#     (3, 1024, 2, 1),
+#     (3, 1024, 1, 1),
+#     (3, 1024, 1, 1),
+# ]
 architecture_config = [
     (3, 32, 1, 1),
     "M",
@@ -21,15 +41,15 @@ architecture_config = [
     (1, 256, 1, 0),
     (3, 512, 1, 1),
     "M",
-    [(1, 256, 1, 0), (3, 512, 1, 1), 4],
+    # [(1, 256, 1, 0), (3, 512, 1, 1), 4],
     (1, 512, 1, 0),
     (3, 1024, 1, 1),
     "M",
-    [(1, 512, 1, 0), (3, 1024, 1, 1), 2],
+    # [(1, 512, 1, 0), (3, 1024, 1, 1), 2],
     (3, 1024, 1, 1),
     (3, 1024, 2, 1),
-    (3, 1024, 1, 1),
-    (3, 1024, 1, 1),
+    # (3, 1024, 1, 1),
+    # (3, 1024, 1, 1),
 ]
 
 # Output: Channels = 1024, Length = 7
@@ -111,7 +131,7 @@ class Yolov1_1D(nn.Module):
         return nn.Sequential(
             nn.Flatten(),
             nn.Linear(1024 * S, 496),  # Adjust based on your 1D output size
-            nn.Dropout(0.0),
+            nn.Dropout(0.4),
             nn.LeakyReLU(0.1),
             nn.Linear(496, S * (C + B * 3)),
         )
