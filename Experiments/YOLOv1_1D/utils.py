@@ -202,7 +202,9 @@ def mean_average_precision(
 
 def plot_image(ohcl_data, boxes ):
     
-    pattern_encoding = {'Double Top, Adam and Adam': 0, 'Triangle, symmetrical': 1, 'Double Bottom, Eve and Adam': 2, 'Head-and-shoulders top': 3, 'Double Bottom, Adam and Adam': 4, 'Head-and-shoulders bottom': 5, 'Flag, high and tight': 6, 'Cup with handle': 7}
+    from utils.formatAndPreprocess import get_pattern_encoding
+
+pattern_encoding = get_pattern_encoding()
     # Assuming pattern_encoding dictionary is available
     pattern_encoding_inv = pattern_encoding
     pattern_encoding_inv = {v: k for k, v in pattern_encoding_inv.items()}

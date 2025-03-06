@@ -1,48 +1,21 @@
 # import the necessary libraries
+from multiprocessing import Manager, Value
+import os
+import numpy as np
 import pandas as pd
-
-pattern_encoding = {'Double Top, Adam and Adam': 0, 'Triangle, symmetrical': 1, 'Double Bottom, Eve and Adam': 2, 'Head-and-shoulders top': 3, 'Double Bottom, Adam and Adam': 4, 'Head-and-shoulders bottom': 5, 'Flag, high and tight': 6, 'Cup with handle': 7}
-
-def indexes_fix(dataset):
-    print("Fixing indexes...")
-    # Print the data types of two levels of the index
-    print(dataset.index.get_level_values(0).dtype, dataset.index.get_level_values(1).dtype)
-
-    # Change the data type of level 0 index to int
-    dataset.index = dataset.index.set_levels(
-        dataset.index.levels[0].astype('int'), level=0
-    )
-
-    # Print the data types after modification
-    print(dataset.index.get_level_values(0).dtype, dataset.index.get_level_values(1).dtype)
-
-    # Convert level 1 index to int64
-    dataset.index = dataset.index.set_levels(
-        dataset.index.levels[1].astype('int64'), level=1
-    )
+from joblib import Parallel, delayed
 
 
-    # Print the data types after modification
-    print(dataset.index.get_level_values(0).dtype, dataset.index.get_level_values(1).dtype)
-    
-    return dataset
-
-def customPatternEncoding (dataset):
-    print("Pattern encoding...")
-    patterns = dataset['Pattern'].unique()
-    # Create a dictionary that maps each unique pattern to a unique integer
-    # pattern_encoding = {pattern: idx for idx, pattern in enumerate(patterns)}
-    # Print the pattern encoding dictionary
-    print("Pattern Encoding Dictionary: ",pattern_encoding)
-    
-    # Encode the 'Pattern' column using the automatically generated encoding dictionary
-    dataset['Pattern'] = dataset['Pattern'].map(pattern_encoding)
-    
-    # Check for any NaN values in the encoded test dataset (in case there are missing patterns)
-    if dataset['Pattern'].isnull().any():
-        print("Warning: Some patterns in the test dataset are missing from the training dataset.")
-    
-    return dataset
+pattern_encoding_old = {'Double Top, Adam and Adam': 0, 'Triangle, symmetrical': 1, 'Double Bottom, Eve and Adam': 2, 'Head-and-shoulders top': 3, 'Double Bottom, Adam and Adam': 4, 'Head-and-shoulders bottom': 5, 'Flag, high and tight': 6, 'Cup with handle': 7}
+pattern_encoding = {'Double Top, Adam and Adam': 0, 'Triangle, symmetrical': 1, 'Double Bottom, Eve and Adam': 2, 'Head-and-shoulders top': 3, 'Double Bottom, Adam and Adam': 4, 'Head-and-shoulders bottom': 5, 'Flag, high and tight': 6, 'Cup with handle': 7 ,'No Pattern':8}
+def get_pattern_encoding_old():
+    return pattern_encoding_old
+def get_reverse_pattern_encoding_old():
+    return {v: k for k, v in pattern_encoding_old.items()}
+def get_pattern_encoding():
+    return pattern_encoding
+def get_reverse_pattern_encoding():
+    return {v: k for k, v in pattern_encoding.items()}
 
 def normalize_dataset(dataset):
     # calculate the min values from Low column and max values from High column for each instance
@@ -71,163 +44,168 @@ def normalize_dataset(dataset):
 
 def normalize_ohlc_segment(dataset):
     # calculate the min values from Low column and max values from High column for each instance
-    min_low = dataset['Low'].transform('min')
-    max_high = dataset['High'].transform('max')
+    min_low = dataset['Low'].min()
+    max_high = dataset['High'].max()
     
     # OHLC columns to normalize
     ohlc_columns = ['Open', 'High', 'Low', 'Close']
     
     dataset_normalized = dataset.copy()
     
-    # Apply the normalization formula to all columns in one go
-    dataset_normalized[ohlc_columns] = (dataset_normalized[ohlc_columns] - min_low.values[:, None]) / (max_high.values[:, None] - min_low.values[:, None])
+    if (max_high - min_low) != 0:
+        # Apply the normalization formula to all columns in one go
+        dataset_normalized[ohlc_columns] = (dataset_normalized[ohlc_columns] - min_low) / (max_high - min_low)
+    else :
+        print("Error: Max high and min low are equal")
     
     # if there is a Volume column normalize it
     if 'Volume' in dataset.columns:
         # calculate the min values from Volume column and max values from Volume column for each instance
-        min_volume = dataset['Volume'].transform('min')
-        max_volume = dataset['Volume'].transform('max')
+        min_volume = dataset['Volume'].min()
+        max_volume = dataset['Volume'].max()
         
-        # Normalize the Volume column
-        dataset_normalized['Volume'] = (dataset_normalized['Volume'] - min_volume.values) / (max_volume.values - min_volume)
+        if (max_volume - min_volume) != 0:
+            # Normalize the Volume column
+            dataset_normalized['Volume'] = (dataset_normalized['Volume'] - min_volume) / (max_volume - min_volume)
+        else:
+            print("Error: Max volume and min volume are equal")
     
     
-    return dataset_normalized   
-
-def add_multi_indexes(data_section , Instance = 0):
-     # Reset index to integers (from dates)
-    data_section.reset_index(drop=True, inplace=True)
-    
-    # check if data_section is empty , if so print why
-    if data_section.empty:
-        # print(f"Symbol {symbol} has no data between {padded_start_date} and {padded_end_date}")
-        return None
-    
-    # Create a MultiIndex for the data_section
-    time_index = range(len(data_section))
-    
-    # Create the MultiIndex where the first level is the unique instance counter
-    multi_index = pd.MultiIndex.from_product([[Instance], time_index], names=['Instance', 'Time'])
-    
-    # Assign the MultiIndex directly to the DataFrame
-    data_section.index = multi_index
-    
-    return data_section
-    
-
-def data_section_format(data_section, instance=0):
-    """
-    Formats and preprocesses the given data section.
-
-    Args:
-        data_section (DataFrame): The data section to be formatted and preprocessed.
-        instance (int, optional): The instance number. Defaults to 0.
-
-    Returns:
-        DataFrame: The formatted and preprocessed data section.
-    """
-    # set multi index
-    data_section = add_multi_indexes(data_section, instance)
-    # fix the indexes
-    data_section = indexes_fix(data_section)
-    # convert the volume column to float64 data type
-    data_section['Volume'] = data_section['Volume'].astype('float64')
-    # Drop date column
-    data_section.drop('Date', axis=1, inplace=True)    
-    
-    # Drop the 'Adj Close' column ########################
-    data_section.drop('Adj Close', axis=1, inplace=True)
-    
-    data_section = normalize_dataset(data_section)
-    
-    return data_section
-    
-
-def dataset_format(filteredPatternDf):
-    """
-    Formats and preprocesses the dataset for candlestick chart pattern detection.
-
-    Args:
-        filteredPatternDf (DataFrame): The filtered pattern DataFrame containing information about chart patterns.
-
-    Returns:
-        DataFrame: The formatted and preprocessed dataset.
-
-    """
-    # Create an empty DataFrame for the time series with a MultiIndex for chart patterns and integers as indexes
-    Dataset = pd.DataFrame(columns=['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume', 'Pattern'],
-                        index=pd.MultiIndex(levels=[[], []], codes=[[], []], names=['Instance', 'Time']))
-
-    # Initialize a counter for unique instances
-    instance_counter = 0
-
-    # Loop through the filtered dataset
-    for index, row in filteredPatternDf.iterrows():
-        symbol = row['Symbol']
+    return dataset_normalized
+   
+def process_row_improved(idx, row, ohlc_df, instance_counter, lock, successful_instances, instance_index_mapping):
+    try:
+        # Extract info and filter data
         start_date = pd.to_datetime(row['Start'])
         end_date = pd.to_datetime(row['End'])
-        padding=0
-        if row['Chart Pattern'] == 'Triangle, symmetrical':
-            padding = 0
+        
+        symbol_df_filtered = ohlc_df[(ohlc_df['Date'] >= start_date) & 
+                                    (ohlc_df['Date'] <= end_date)]
+        
+        if symbol_df_filtered.empty:
+            print(f"Empty result for {row['Symbol']} from {start_date} to {end_date}")
+            return None
+        
+        # Get unique instance ID
+        with lock:
+            unique_instance = instance_counter.value
+            instance_counter.value += 1
+            
+            # Explicitly add to instance_index_mapping using string key conversion
+            instance_index_mapping[unique_instance] = idx
+            
+            # Track successful instances
+            successful_instances.append(unique_instance)
+        
+        # Setup MultiIndex
+        symbol_df_filtered = symbol_df_filtered.reset_index(drop=True)
+        multi_index = pd.MultiIndex.from_arrays(
+            [[unique_instance] * len(symbol_df_filtered), range(len(symbol_df_filtered))],
+            names=["Instance", "Time"]
+        )
+        symbol_df_filtered.index = multi_index
+        
+        # Set index levels to proper types
+        symbol_df_filtered.index = symbol_df_filtered.index.set_levels(
+            symbol_df_filtered.index.levels[0].astype('int'), level=0
+        )
+        symbol_df_filtered.index = symbol_df_filtered.index.set_levels(
+            symbol_df_filtered.index.levels[1].astype('int64'), level=1
+        )
+        
+        # Add pattern and clean up
+        symbol_df_filtered['Pattern'] = pattern_encoding[row['Chart Pattern']]
+        symbol_df_filtered.drop('Date', axis=1, inplace=True)
+        if 'Adj Close' in symbol_df_filtered.columns:
+            symbol_df_filtered.drop('Adj Close', axis=1, inplace=True)
+        
+        # Normalize
+        symbol_df_filtered = normalize_ohlc_segment(symbol_df_filtered)
+        
+        return symbol_df_filtered
+    
+    except Exception as e:
+        print(f"Error processing {row['Symbol']}: {str(e)}")
+        return None
+
+def dataset_format(filteredPatternDf, give_instance_index_mapping=False):
+    """
+    Formats and preprocesses the dataset with better tracking of successful instances.
+    """
+    # Get symbol list from files
+    folder_path = 'Datasets/OHLC data/'
+    file_list = os.listdir(folder_path)
+    symbol_list = [file[:-4] for file in file_list if file.endswith('.csv')]
+    
+    # Check for missing symbols
+    symbols_in_df = filteredPatternDf['Symbol'].unique()
+    missing_symbols = set(symbols_in_df) - set(symbol_list)
+    if missing_symbols:
+        print("Missing symbols: ", missing_symbols)
+    
+    # Create a list of tasks (symbol, row pairs)
+    tasks = []
+    for symbol in symbols_in_df:
+        if symbol in symbol_list:  # Skip missing symbols
+            filteredPatternDf_for_symbol = filteredPatternDf[filteredPatternDf['Symbol'] == symbol]
+            file_path = os.path.join(folder_path, f"{symbol}.csv")
+            
+            # Pre-load symbol data
+            try:
+                symbol_df = pd.read_csv(file_path)
+                symbol_df['Date'] = pd.to_datetime(symbol_df['Date'])
+                symbol_df['Date'] = symbol_df['Date'].dt.tz_localize(None)
+                
+                for idx, row in filteredPatternDf_for_symbol.iterrows():
+                    tasks.append((idx, row, symbol_df))
+            except Exception as e:
+                print(f"Error loading {symbol}: {str(e)}")
+    
+    print(f"Processing {len(tasks)} tasks in parallel...")
+    
+    # Process all tasks with instance tracking
+    with Manager() as manager:
+        instance_counter = manager.Value('i', 0)
+        lock = manager.Lock()
+        successful_instances = manager.list()  # Track which instances succeed
+        instance_index_mapping = manager.dict()  # Mapping from instance ID to index
+        
+        results = Parallel(n_jobs=-1, verbose=1)(
+            delayed(process_row_improved)(task_idx, row, df, instance_counter, lock, successful_instances, instance_index_mapping) 
+            for task_idx, row, df in tasks
+        )
+        
+        # Filter out None results
+        results = [result for result in results if result is not None]
+        
+        print(f"Total tasks: {len(tasks)}, Successful: {len(results)}")
+        print(f"Instance counter final value: {instance_counter.value}")
+        print(f"Number of successful instances: {len(successful_instances)}")
+        
+        # Debug print for mapping
+        print("Debug - Instance Index Mapping:")
+        for k, v in instance_index_mapping.items():
+            print(f"Key: {k}, Value: {v}")
+        
+        if len(successful_instances) < instance_counter.value:
+            print("Warning: Some instances were assigned but their tasks failed")
+        
+        # Concatenate results and renumber instances if needed
+        if results:
+            dataset = pd.concat(results)
+            dataset = dataset.sort_index(level=0)
+            
+            # Replace inf/nan values
+            dataset.replace([np.inf, -np.inf], np.nan, inplace=True)
+            dataset.fillna(method='ffill', inplace=True)
+            
+            if give_instance_index_mapping:
+                # Convert manager.dict to a regular dictionary
+                instance_index_mapping_dict = dict(instance_index_mapping)
+                
+                print("Converted Mapping:", instance_index_mapping_dict)
+                return dataset, instance_index_mapping_dict
+            else:
+                return dataset
         else:
-            # Calculate the padding for the time range (25% of the time range length)
-            padding = int((end_date - start_date).days * 0.3)
-        
-        # Adjust the date range to include padding
-        padded_start_date = start_date - pd.Timedelta(days=padding)
-        padded_end_date = end_date + pd.Timedelta(days=padding)
-        
-        # Read the CSV file containing the OHLC data for the symbol
-        symbol_df = pd.read_csv(f'Datasets/OHLC data/{symbol}.csv')
-        symbol_df['Date'] = pd.to_datetime(symbol_df['Date'])
-        
-        # Remove timezone information from the Date column
-        symbol_df['Date'] = symbol_df['Date'].dt.tz_localize(None)
-        
-        # Filter the symbol DataFrame to include only the date range with padding
-        symbol_df_filtered = symbol_df[(symbol_df['Date'] >= padded_start_date) & 
-                                    (symbol_df['Date'] <= padded_end_date)]
-        
-        
-        symbol_df_filtered=add_multi_indexes(symbol_df_filtered, instance_counter)
-        if(symbol_df_filtered is None):
-            continue
-        
-        # # Append the Pattern column to indicate the chart pattern
-        # symbol_df_filtered['Pattern'] = row['Chart Pattern']
-        if not symbol_df_filtered.empty:
-            # Append the Pattern column to indicate the chart pattern
-            symbol_df_filtered = symbol_df_filtered.copy()  # Create a copy
-            symbol_df_filtered['Pattern'] = row['Chart Pattern']
-
-        
-            # Concatenate the filtered DataFrame to the Dataset
-            Dataset = pd.concat([Dataset, symbol_df_filtered], axis=0)
-        
-            # Increment the instance counter for the next occurrence
-            instance_counter += 1
-
-   
-    
-    # fix the indexes
-    Dataset=indexes_fix(Dataset)
-    
-    Dataset = customPatternEncoding(Dataset)
-    
-    
-    # Final Fixes :
-    # convert the volume column to float64 data type
-    Dataset['Volume'] = Dataset['Volume'].astype('float64')
-    print("data types /n",Dataset.dtypes)
-    # Drop date column
-    Dataset.drop('Date', axis=1, inplace=True)    
-    
-    # Drop the 'Adj Close' column ########################
-    Dataset.drop('Adj Close', axis=1, inplace=True)
-    
-    # Display the head of the Dataset
-    # print(Dataset.head())
-    
-    Dataset = normalize_dataset(Dataset)
-    
-    return Dataset
+            return pd.DataFrame()
