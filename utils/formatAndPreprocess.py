@@ -17,6 +17,13 @@ def get_pattern_encoding():
 def get_reverse_pattern_encoding():
     return {v: k for k, v in pattern_encoding.items()}
 
+def get_pattern_list():
+    return list(pattern_encoding.keys())
+
+def filter_to_get_selected_patterns(df):
+    df = df[df['Chart Pattern'].isin(get_pattern_list())]
+    return df
+
 def normalize_dataset(dataset):
     # calculate the min values from Low column and max values from High column for each instance
     min_low = dataset.groupby(level='Instance')['Low'].transform('min')
