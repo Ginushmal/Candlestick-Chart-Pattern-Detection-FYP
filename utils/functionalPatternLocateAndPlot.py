@@ -655,7 +655,7 @@ def plot_pattern_clusters(segment_id, test_pattern_segment_wise, ohcl_data_given
     for _, row in group.iterrows():
         pattern_name = row['Chart Pattern']
         cluster = row['Cluster']
-        color = "gray" if cluster == -1 else colors[cluster]
+        color = "gray" if cluster == -1 else colors[cluster % len(colors)]
 
         pattern_start_date = pd.to_datetime(row['Start']).tz_localize(None)
         pattern_end_date = pd.to_datetime(row['End']).tz_localize(None)

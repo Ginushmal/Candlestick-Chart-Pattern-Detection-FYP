@@ -209,6 +209,9 @@ def plot_patterns_for_segment(segment_id, test_pattern_segment_wise ,ohcl_data_g
     # convert the date columns to datetime
     ohcl_data['Date'] = pd.to_datetime(ohcl_data['Date'])
     ohcl_data['Date'] = ohcl_data['Date'].dt.tz_localize(None)
+    
+    group['Seg_Start'] = pd.to_datetime(group['Seg_Start'])
+    group['Seg_End'] = pd.to_datetime(group['Seg_End'])
 
     seg_start = group['Seg_Start'].iloc[0]
     seg_end = group['Seg_End'].iloc[0]
@@ -370,27 +373,27 @@ def parallel_process_sliding_window(ohlc_data_segment, rocket_model, probability
     seg_end = group['Seg_End'].iloc[0]
     symbol = group['Symbol'].iloc[0]
 
-    num_cores = 8  # Use all available cores
+    num_cores = 16  # Use all available cores
 
-    # # Use Parallel as a context manager to ensure cleanup
-    # with Parallel(n_jobs=num_cores,verbose = 1) as parallel:
-    #     results = parallel(
-    #         delayed(process_window)(i, ohlc_data_segment, rocket_model, probability_threshold, pattern_encoding_reversed, seg_id, symbol, seg_start, seg_end, test_seg_id, window_size, padding_proportion)
-    #         for i in range(0, len(ohlc_data_segment), stride)
-    #     )
+    # Use Parallel as a context manager to ensure cleanup
+    with Parallel(n_jobs=num_cores,verbose = 1) as parallel:
+        results = parallel(
+            delayed(process_window)(i, ohlc_data_segment, rocket_model, probability_threshold, pattern_encoding_reversed, seg_id, symbol, seg_start, seg_end, test_seg_id, window_size, padding_proportion)
+            for i in range(0, len(ohlc_data_segment), stride)
+        )
 
-    # # print(f"Finished processing segment {seg_id} for symbol {symbol}")
-    # # print(results)
-    # # Filter out None values and create DataFrame
-    # win_results_df = pd.DataFrame([res for res in results if res is not None])
+    # print(f"Finished processing segment {seg_id} for symbol {symbol}")
+    # print(results)
+    # Filter out None values and create DataFrame
+    win_results_df = pd.DataFrame([res for res in results if res is not None])
     
-    #  do the sam e thing without parrellel processing
-    results = []
-    for i in range(0, len(ohlc_data_segment), stride):
-        res = process_window(i, ohlc_data_segment, rocket_model, probability_threshold, pattern_encoding_reversed, seg_id, symbol, seg_start, seg_end, test_seg_id, window_size, padding_proportion)
-        if res is not None:
-            results.append(res)
-    win_results_df = pd.DataFrame(results)
+    # #  do the sam e thing without parrellel processing
+    # results = []
+    # for i in range(0, len(ohlc_data_segment), stride):
+    #     res = process_window(i, ohlc_data_segment, rocket_model, probability_threshold, pattern_encoding_reversed, seg_id, symbol, seg_start, seg_end, test_seg_id, window_size, padding_proportion)
+    #     if res is not None:
+    #         results.append(res)
+    # win_results_df = pd.DataFrame(results)
 
     return win_results_df
 
