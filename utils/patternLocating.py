@@ -425,7 +425,7 @@ def prepare_dataset_for_cluster(ohlc_data_segment, win_results_df):
 
     return predicted_patterns
     
-def cluster_windows(predicted_patterns , probability_threshold, window_size):
+def cluster_windows(predicted_patterns , probability_threshold, window_size,eps = 0.05 , min_samples = 2):
     df = predicted_patterns.copy()
 
     # only get the rows that has a probability greater than the probability threshold
@@ -434,6 +434,9 @@ def cluster_windows(predicted_patterns , probability_threshold, window_size):
     # Initialize a list to store merged clusters from all groups
     cluster_labled_windows = []
     interseced_clusters = []
+    
+    min_center = df['Center'].min()
+    max_center = df['Center'].max()
 
     # Group by 'Chart Pattern' and apply clustering to each group
     for pattern, group in df.groupby('Chart Pattern'):
@@ -441,8 +444,16 @@ def cluster_windows(predicted_patterns , probability_threshold, window_size):
         # print(group)
         # Clustering
         centers = group['Center'].values.reshape(-1, 1)
-        eps  =window_size/2 + 4
-        db = DBSCAN(eps=eps, min_samples=2).fit(centers)
+        
+        # centers normalization
+        if min_center < max_center:  # Avoid division by zero
+            norm_centers = (centers - min_center) / (max_center - min_center)
+        else:
+            # If all values are the same, set to constant (e.g., 0 or 1)
+            norm_centers = np.ones_like(centers)
+        
+        # eps  =window_size/2 + 4
+        db = DBSCAN(eps=eps, min_samples=min_samples).fit(norm_centers)
         group['Cluster'] = db.labels_
         
         cluster_labled_windows.append(group)
@@ -475,7 +486,8 @@ def cluster_windows(predicted_patterns , probability_threshold, window_size):
                 'Start': cluster_start,
                 'End': cluster_end,
                 'Seg_Start': cluster_group['Seg_Start'].iloc[0],
-                'Seg_End': cluster_group['Seg_End'].iloc[0]
+                'Seg_End': cluster_group['Seg_End'].iloc[0],
+                'Avg_Probability': cluster_group['Probability'].mean(),
             })
 
     if len(cluster_labled_windows) == 0 or len(interseced_clusters) == 0:
