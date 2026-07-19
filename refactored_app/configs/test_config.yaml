@@ -1,0 +1,25 @@
+pipeline_type: "two_stage"
+
+data:
+  csv_path: "../Datasets/scraped_blog_tables.csv"
+  ohlc_dir: "../Datasets/OHLC data"
+  output_dir: "../Datasets/VanilaDataset/X-Y Splitted Data"
+  scrape:
+    start_year: 2024
+    end_year: 2024
+    months: ["Jan", "Feb"]
+  target_patterns: 
+    - "Double Top, Adam and Adam"
+    - "Triangle, symmetrical"
+  max_samples_per_pattern: 5
+  max_total_samples: 10
+
+classifier:
+  name: "minirocket"
+  params:
+    num_kernels: 100
+
+localization:
+  window_size: 30
+  stride: 5
+  eps_offset: 4

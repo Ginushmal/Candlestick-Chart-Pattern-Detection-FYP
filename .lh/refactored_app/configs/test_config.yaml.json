@@ -1,0 +1,18 @@
+{
+    "sourceFile": "refactored_app/configs/test_config.yaml",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1784429215699,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1784429215699,
+            "name": "Commit-0",
+            "content": "pipeline_type: \"two_stage\"\n\ndata:\n  csv_path: \"../Datasets/scraped_blog_tables.csv\"\n  ohlc_dir: \"../Datasets/OHLC data\"\n  output_dir: \"../Datasets/VanilaDataset/X-Y Splitted Data\"\n  scrape:\n    start_year: 2024\n    end_year: 2024\n    months: [\"Jan\", \"Feb\"]\n  target_patterns: \n    - \"Double Top, Adam and Adam\"\n    - \"Triangle, symmetrical\"\n  max_samples_per_pattern: 5\n  max_total_samples: 10\n\nclassifier:\n  name: \"minirocket\"\n  params:\n    num_kernels: 100\n\nlocalization:\n  window_size: 30\n  stride: 5\n  eps_offset: 4\n"
+        }
+    ]
+}
